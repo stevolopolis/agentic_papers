@@ -22,6 +22,7 @@ import logging
 from tqdm import tqdm
 from datetime import datetime, timedelta
 from pydantic import BaseModel
+from prompts import *
 
 dotenv.load_dotenv()
 
@@ -63,23 +64,9 @@ class Paper(BaseModel):
     link_to_project_page: str
 
 
-BASE_INSTRUCTIONS = (
-    "You are a helpful assistant that can summarize daily papers on arxiv.org for me. "
-    "You are responsible for reading the CS.ai subcategory of arxiv.org and summarize the papers into the Paper class. \n\n"
-)
 
-PROMPT = (
-    "Here is the dictionary of information scraped from the Arxiv API for a paper"
-    "Use these information to fill the Paper class. Put <missing> if the information is not available."
-    "If the abstract is more than 100 words, shorten it."
-)
-
-
-def get_arxiv_papers(date: datetime = None):
-    if date is None:
-        date = datetime.now().strftime("%Y%m%d")
-
-     # Use arXiv API instead of HTML scraping
+def get_arxiv_papers(date: datetime):
+    # Use arXiv API instead of HTML scraping
     logging.info(f"Calling arxiv API for date: {date}")
     search = arxiv.Search(
         query=f"cat:cs.AI AND submittedDate:[{date}0000 TO {date}2359]",
@@ -157,8 +144,6 @@ async def main():
         # Convert paper dictionary to string
         logging.debug(f"Understanding the paper: {raw_paper['title']}")
         raw_paper_str = json.dumps(raw_paper)
-        print(raw_paper_str)
-        input()
         result = await Runner.run(agent, raw_paper_str)
         paper = result.final_output
 
