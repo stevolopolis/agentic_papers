@@ -1,0 +1,4 @@
+openai-agents
+dotenv
+arxiv
+tqdm

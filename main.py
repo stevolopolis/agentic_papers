@@ -20,7 +20,7 @@ import sqlite3
 import arxiv
 import logging
 from tqdm import tqdm
-from datetime import datetime
+from datetime import datetime, timedelta
 from pydantic import BaseModel
 
 dotenv.load_dotenv()
@@ -58,6 +58,7 @@ class Paper(BaseModel):
     pub_lab: str
     subjects: str
     abstract: str
+    date_published: str
     link_to_paper: str
     link_to_project_page: str
 
@@ -93,7 +94,7 @@ def get_arxiv_papers(date: datetime = None):
     logging.info(f"Restructuring papers results for the agent...")
     for result in results:
         paper_info = {
-            "id": result.entry_id,
+            "id": result.entry_id.split("/")[-1],
             "title": result.title,
             "authors": [{"name": author.name} for author in result.authors],
             "abstract": result.summary,
@@ -107,6 +108,16 @@ def get_arxiv_papers(date: datetime = None):
     return papers_data
 
 
+def get_previous_date():
+    """Get the previous weekday in the format YYYYMMDD"""
+    date = datetime.now()
+    while True:
+        date = date - timedelta(days=1)
+        if date.weekday() < 5:  # 0-4 are Monday to Friday
+            break
+    return date.strftime("%Y%m%d")
+
+
 async def main():
     # Initialize the agent
     agent = Agent(
@@ -116,7 +127,7 @@ async def main():
         output_type=Paper,
     )
 
-    date = "20250313"
+    date = get_previous_date()
 
     # Use arXiv API instead of HTML scraping
     raw_papers = get_arxiv_papers(date)
@@ -146,6 +157,8 @@ async def main():
         # Convert paper dictionary to string
         logging.debug(f"Understanding the paper: {raw_paper['title']}")
         raw_paper_str = json.dumps(raw_paper)
+        print(raw_paper_str)
+        input()
         result = await Runner.run(agent, raw_paper_str)
         paper = result.final_output
 
