@@ -42,6 +42,37 @@
         }
         .search-container {
             margin-bottom: 2rem;
+            max-width: 600px;
+            margin-right: 0;
+        }
+        .search-container .input-group {
+            background: white;
+            border-radius: 50px;
+            overflow: hidden;
+            box-shadow: 0 2px 3px rgba(0,0,0,0.1);
+        }
+        .search-container input {
+            border: 1px solid #edf1f4;
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-size: 0.95rem;
+            transition: all 0.2s ease;
+            box-shadow: inset 0 0 0 1px transparent;
+        }
+        .search-container input:focus {
+            box-shadow: inset 0 0 0 1px #75aadf, 0 0 0 1px #75aadf;
+            border-color: transparent;
+            outline: none;
+        }
+        .search-container .btn-search {
+            background: #0d6efd;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-weight: 500;
+        }
+        .search-container .btn-search:hover {
+            background: #0b5ed7;
         }
         .loading-spinner {
             display: none;
@@ -109,6 +140,11 @@
             color: #6c757d;
             margin-bottom: 0.5rem;
         }
+        .paper-venue {
+            font-size: 0.8rem;
+            color: #495057;
+            font-style: italic;
+        }
         .papers-count {
             background-color: #f8f9fa;
             padding: 0.5rem 1rem;
@@ -119,46 +155,105 @@
         .papers-count strong {
             color: #0d6efd;
         }
+        .date-container {
+            display: flex;
+            justify-content: flex-end;
+        }
+        .date-selector {
+            display: inline-flex;
+            align-items: center;
+            background: #f1f3f5;
+            border-radius: 8px;
+            font-size: 0.95rem;
+        }
+        .date-selector button {
+            border: none;
+            background: none;
+            padding: 6px;
+            cursor: pointer;
+            color: #495057;
+            border-radius: 4px;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        .date-selector button:hover {
+            background: #e9ecef;
+        }
+        .date-selector .date-display {
+            padding: 6px 16px;
+            min-width: 100px;
+            text-align: center;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #f8f9fa;
+            font-size: 0.95rem;
+        }
+        .date-selector .date-display:hover {
+            background: #e9ecef;
+        }
+        .date-selector input[type="date"] {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            border: 0;
+        }
+        .btn-outline-adobe-red {
+            color: #FF0000;
+            border-color: #FF0000;
+        }
+        .btn-outline-adobe-red:hover {
+            color: #fff;
+            background-color: #FF0000;
+            border-color: #FF0000;
+        }
     </style>
 </head>
 <body>
     <div class="container py-4">
         <header class="pb-3 mb-4 border-bottom">
-            <div class="d-flex align-items-center text-dark text-decoration-none">
-                <i class="bi bi-journal-text me-2" style="font-size: 2rem;"></i>
-                <span class="fs-4">ArXiv Papers Viewer</span>
-            </div>
-        </header>
-
-        <div class="row mb-3">
-            <div class="col-md-6">
-                <div class="search-container">
-                    <div class="input-group">
-                        <input type="text" id="search-input" class="form-control" placeholder="Search papers by title or abstract...">
-                        <button class="btn btn-primary" id="search-button">
-                            <i class="bi bi-search"></i> Search
-                        </button>
-                    </div>
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center text-dark text-decoration-none">
+                    <i class="bi bi-journal-text me-2" style="font-size: 2rem;"></i>
+                    <span class="fs-4">ArXiv Papers Viewer</span>
                 </div>
-            </div>
-            <div class="col-md-3">
-                <div class="date-container">
-                    <div class="input-group">
-                        <span class="input-group-text"><i class="bi bi-calendar"></i></span>
-                        <input type="date" id="date-picker" class="form-control">
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
                 <div class="per-page-container">
                     <label for="per-page-select">Show:</label>
-                    <select id="per-page-select" class="form-select">
+                    <select id="per-page-select" class="form-select form-select-sm" style="width: auto;">
                         <option value="10">10 per page</option>
                         <option value="20">20 per page</option>
                         <option value="50">50 per page</option>
                         <option value="100">100 per page</option>
                         <option value="0" selected>All papers</option>
                     </select>
+                </div>
+            </div>
+        </header>
+
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="search-container">
+                    <div class="input-group">
+                        <input type="text" id="search-input" class="form-control" placeholder="Search papers by title or abstract...">
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="date-container">
+                    <div class="date-selector">
+                        <button id="prev-date">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                        <div class="date-display" id="date-display"></div>
+                        <input type="date" id="date-picker" class="form-control">
+                        <button id="next-date">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -208,13 +303,53 @@
         const paginationContainer = document.getElementById('pagination');
         const loadingSpinner = document.getElementById('loading-spinner');
         const searchInput = document.getElementById('search-input');
-        const searchButton = document.getElementById('search-button');
         const datePicker = document.getElementById('date-picker');
+        const dateDisplay = document.getElementById('date-display');
+        const prevDateBtn = document.getElementById('prev-date');
+        const nextDateBtn = document.getElementById('next-date');
         const paperDetails = document.getElementById('paper-details');
         const paperDetailsContent = document.getElementById('paper-details-content');
         const closeDetails = document.getElementById('close-details');
         const perPageSelect = document.getElementById('per-page-select');
         const papersCountElement = document.getElementById('papers-count');
+
+        // Function to update the displayed date
+        function updateDateDisplay() {
+            const date = new Date(currentDate);
+            dateDisplay.textContent = date.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+
+        // Function to check if a date is today
+        function isToday(dateString) {
+            const today = new Date();
+            const date = new Date(dateString);
+            return date.getFullYear() === today.getFullYear() &&
+                   date.getMonth() === today.getMonth() &&
+                   date.getDate() === today.getDate();
+        }
+
+        // Function to update navigation buttons state
+        function updateNavigationState() {
+            // Disable next button if current date is today
+            if (isToday(currentDate)) {
+                nextDateBtn.disabled = true;
+                nextDateBtn.style.opacity = '0.5';
+                nextDateBtn.style.cursor = 'not-allowed';
+            } else {
+                nextDateBtn.disabled = false;
+                nextDateBtn.style.opacity = '1';
+                nextDateBtn.style.cursor = 'pointer';
+            }
+        }
+
+        // Update the date picker max attribute
+        function setDatePickerMax() {
+            const today = new Date().toISOString().split('T')[0];
+            datePicker.setAttribute('max', today);
+        }
 
         // Event listeners
         document.addEventListener('DOMContentLoaded', () => {
@@ -222,37 +357,79 @@
             const today = new Date();
             currentDate = today.toISOString().split('T')[0];
             
-            // Set the date picker to the current date
+            // Set the date picker to the current date and max date
             datePicker.value = currentDate;
+            setDatePickerMax();
+            updateDateDisplay();
+            updateNavigationState();
             
             loadPapers();
             
             // Add click event to the paper-details overlay to close when clicking outside the content
             paperDetails.addEventListener('click', (e) => {
-                // If the click is directly on the overlay (not on its children)
                 if (e.target === paperDetails) {
                     paperDetails.style.display = 'none';
                 }
             });
         });
 
-        searchButton.addEventListener('click', () => {
-            currentSearch = searchInput.value.trim();
-            currentPage = 1;
-            loadPapers();
-        });
-
-        searchInput.addEventListener('keypress', (e) => {
+        searchInput.addEventListener('keyup', (e) => {
             if (e.key === 'Enter') {
+                e.preventDefault();
                 currentSearch = searchInput.value.trim();
                 currentPage = 1;
                 loadPapers();
             }
         });
 
+        // Date navigation handlers
+        prevDateBtn.addEventListener('click', () => {
+            const date = new Date(currentDate);
+            date.setDate(date.getDate() - 1);
+            currentDate = date.toISOString().split('T')[0];
+            datePicker.value = currentDate;
+            updateDateDisplay();
+            updateNavigationState();
+            loadPapers();
+        });
+
+        nextDateBtn.addEventListener('click', () => {
+            if (isToday(currentDate)) return;
+            
+            const date = new Date(currentDate);
+            date.setDate(date.getDate() + 1);
+            
+            // Don't allow going beyond today
+            const today = new Date();
+            if (date > today) return;
+            
+            currentDate = date.toISOString().split('T')[0];
+            datePicker.value = currentDate;
+            updateDateDisplay();
+            updateNavigationState();
+            loadPapers();
+        });
+
+        // Make the date display clickable to open the date picker
+        dateDisplay.addEventListener('click', () => {
+            datePicker.showPicker();
+        });
+
         datePicker.addEventListener('change', () => {
-            currentDate = datePicker.value;
-            currentPage = 1;
+            // Don't allow selecting dates beyond today
+            const selectedDate = new Date(datePicker.value);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            if (selectedDate > today) {
+                currentDate = today.toISOString().split('T')[0];
+                datePicker.value = currentDate;
+            } else {
+                currentDate = datePicker.value;
+            }
+            
+            updateDateDisplay();
+            updateNavigationState();
             loadPapers();
         });
 
@@ -272,10 +449,7 @@
             showLoading();
             
             try {
-                // If perPage is 0, it means "All"
                 const effectivePerPage = perPage === 0 ? 1000 : perPage;
-                
-                // Include date parameter in the API call
                 const url = `/api/papers?page=${currentPage}&per_page=${effectivePerPage}&search=${encodeURIComponent(currentSearch)}&date=${encodeURIComponent(currentDate)}`;
                 const response = await fetch(url);
                 
@@ -285,10 +459,18 @@
                 
                 const data = await response.json();
                 
-                // Update current date if API returned a different date (closest match)
-                if (data.closest_date && data.closest_date !== currentDate) {
-                    currentDate = data.closest_date;
-                    papersCountElement.innerHTML = `<div class="alert alert-info">No papers found for the requested date. Showing papers from ${formatDate(currentDate)} instead.</div>`;
+                // If no papers found for the date, show message without using closest date
+                if (data.total === 0) {
+                    papersContainer.innerHTML = `
+                        <div class="col-12">
+                            <div class="alert alert-info" role="alert">
+                                No papers found for ${formatDate(currentDate)}.
+                            </div>
+                        </div>
+                    `;
+                    papersCountElement.innerHTML = `<strong>0</strong> papers found`;
+                    document.querySelector('.pagination-container').style.display = 'none';
+                    return;
                 }
                 
                 // Update pagination info
@@ -308,12 +490,10 @@
                     document.querySelector('.pagination-container').style.display = 'none';
                 }
             } catch (error) {
-                console.error('Error loading papers:', error);
+                console.error('Error:', error);
                 papersContainer.innerHTML = `
-                    <div class="col-12">
-                        <div class="alert alert-danger" role="alert">
-                            Error loading papers. Please try again later.
-                        </div>
+                    <div class="alert alert-danger">
+                        Error loading papers. Please try again later.
                     </div>
                 `;
             } finally {
@@ -410,7 +590,10 @@
                                 <i class="bi bi-calendar"></i> ${datePublished}
                             </div>
                             <h5 class="card-title paper-title">${paper.title || 'Untitled'}</h5>
-                            <h6 class="card-subtitle mb-2 text-muted">${authorText}</h6>
+                            <h6 class="card-subtitle mb-1 text-muted">${authorText}</h6>
+                            <div class="paper-venue text-muted mb-2">
+                                <small>${paper.pub_venue ? paper.pub_venue : 'no venue recorded'}</small>
+                            </div>
                             <p class="card-text paper-abstract" data-paper-id="${paper.id}">${abstract}</p>
                             <span class="expand-abstract" data-paper-id="${paper.id}">Show more</span>
                         </div>
@@ -419,8 +602,12 @@
                                 View Details
                             </button>
                             ${paper.link_to_paper ? 
-                                `<a href="${paper.link_to_paper}" target="_blank" class="btn btn-sm btn-outline-secondary ms-2">
+                                `<a href="${paper.link_to_paper}" target="_blank" class="btn btn-sm btn-outline-adobe-red ms-2">
                                     <i class="bi bi-file-earmark-pdf"></i> PDF
+                                </a>` : ''}
+                            ${paper.link_to_project_page ? 
+                                `<a href="${paper.link_to_project_page}" target="_blank" class="btn btn-sm btn-outline-secondary ms-2">
+                                    <i class="bi bi-globe"></i> Project
                                 </a>` : ''}
                         </div>
                     </div>
@@ -570,12 +757,12 @@
                     
                     <div class="d-flex gap-2">
                         ${paper.link_to_paper ? 
-                            `<a href="${paper.link_to_paper}" target="_blank" class="btn btn-primary">
+                            `<a href="${paper.link_to_paper}" target="_blank" class="btn btn-outline-adobe-red">
                                 <i class="bi bi-file-earmark-pdf"></i> View Paper
                             </a>` : ''}
                         
                         ${paper.link_to_project_page ? 
-                            `<a href="${paper.link_to_project_page}" target="_blank" class="btn btn-outline-primary">
+                            `<a href="${paper.link_to_project_page}" target="_blank" class="btn btn-outline-secondary">
                                 <i class="bi bi-globe"></i> Project Page
                             </a>` : ''}
                     </div>

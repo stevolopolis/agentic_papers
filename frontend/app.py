@@ -66,29 +66,13 @@ def get_papers():
     
     # Build the query based on whether there's a search term or date
     query_params = []
-    closest_date = None
     
     if search_term:
         search_condition = "WHERE title LIKE ? OR abstract LIKE ?"
         query_params = [f'%{search_term}%', f'%{search_term}%']
     elif date:
-        # First check if there are any papers with the requested date
-        date_check_query = "SELECT COUNT(*) FROM papers WHERE date_published = ?"
-        date_count = conn.execute(date_check_query, (date,)).fetchone()[0]
-        
-        if date_count > 0:
-            # Use the requested date
-            search_condition = "WHERE date_published = ?"
-            query_params = [date]
-        else:
-            # Find the closest date that has papers
-            closest_date = find_closest_date(conn, date)
-            
-            if closest_date:
-                search_condition = "WHERE date_published = ?"
-                query_params = [closest_date]
-            else:
-                search_condition = ""
+        search_condition = "WHERE date_published = ?"
+        query_params = [date]
     else:
         search_condition = ""
     
@@ -98,24 +82,18 @@ def get_papers():
     
     # Get the papers for the current page
     if is_all:
-        # If showing all, don't use LIMIT and OFFSET
-        query = f"""
-            SELECT * FROM papers 
-            {search_condition}
-            ORDER BY date_published DESC
-        """
-        papers = conn.execute(query, query_params).fetchall()
+        limit_clause = ""
     else:
-        # Normal pagination
         offset = (page - 1) * per_page
-        query = f"""
-            SELECT * FROM papers 
-            {search_condition}
-            ORDER BY date_published DESC
-            LIMIT ? OFFSET ?
-        """
-        query_params.extend([per_page, offset])
-        papers = conn.execute(query, query_params).fetchall()
+        limit_clause = f" LIMIT {per_page} OFFSET {offset}"
+    
+    query = f"""
+        SELECT * FROM papers {search_condition}
+        ORDER BY date_published DESC, title ASC
+        {limit_clause}
+    """
+    
+    papers = conn.execute(query, query_params).fetchall()
     
     # Convert papers to list of dicts
     papers_list = []
@@ -129,21 +107,19 @@ def get_papers():
                 paper_dict['author_list'] = paper_dict['author_list']
         papers_list.append(paper_dict)
     
-    conn.close()
+    # Calculate total pages
+    total_pages = (total + per_page - 1) // per_page if not is_all else 1
     
-    response_data = {
+    response = {
         'papers': papers_list,
         'total': total,
         'page': page,
         'per_page': per_page,
-        'total_pages': (total + per_page - 1) // per_page if not is_all else 1
+        'total_pages': total_pages
     }
     
-    # Include the closest date in the response if it was used
-    if closest_date:
-        response_data['closest_date'] = closest_date
-    
-    return jsonify(response_data)
+    conn.close()
+    return jsonify(response)
 
 @app.route('/api/paper/<paper_id>')
 def get_paper(paper_id):
