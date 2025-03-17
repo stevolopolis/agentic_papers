@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ArXiv Papers Viewer</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+    <style>
+        .paper-card {
+            transition: transform 0.2s;
+            height: 100%;
+            font-size: 0.9rem; /* Smaller font size for cards */
+        }
+        .paper-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .paper-title {
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 1.1rem; /* Smaller title font */
+        }
+        .paper-abstract {
+            color: #7f8c8d;
+            display: -webkit-box;
+            -webkit-line-clamp: 4; /* Show 4 lines instead of 3 */
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            font-size: 0.85rem; /* Smaller abstract font */
+            transition: all 0.3s ease;
+        }
+        .paper-abstract.expanded {
+            -webkit-line-clamp: unset;
+            max-height: none;
+        }
+        .pagination-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+        .search-container {
+            margin-bottom: 2rem;
+        }
+        .loading-spinner {
+            display: none;
+            text-align: center;
+            margin: 2rem 0;
+        }
+        .paper-details {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            z-index: 1000;
+            overflow-y: auto;
+            cursor: pointer; /* Show pointer cursor on the overlay */
+        }
+        .paper-details-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 2rem;
+            width: 80%;
+            max-width: 800px;
+            border-radius: 8px;
+            position: relative;
+            cursor: default; /* Reset cursor to default on the content */
+        }
+        .close-button {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            font-size: 1.5rem;
+            cursor: pointer;
+        }
+        .expand-abstract {
+            color: #3498db;
+            cursor: pointer;
+            font-size: 0.8rem;
+            margin-top: 0.25rem;
+            display: inline-block;
+        }
+        .card-subtitle {
+            font-size: 0.8rem; /* Smaller author font */
+        }
+        .card-footer {
+            padding: 0.5rem 1rem; /* Smaller footer padding */
+        }
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+        }
+        .per-page-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .per-page-container label {
+            margin-right: 0.5rem;
+            margin-bottom: 0;
+            white-space: nowrap;
+        }
+        .paper-date {
+            font-size: 0.75rem;
+            color: #6c757d;
+            margin-bottom: 0.5rem;
+        }
+        .papers-count {
+            background-color: #f8f9fa;
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+        }
+        .papers-count strong {
+            color: #0d6efd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container py-4">
+        <header class="pb-3 mb-4 border-bottom">
+            <div class="d-flex align-items-center text-dark text-decoration-none">
+                <i class="bi bi-journal-text me-2" style="font-size: 2rem;"></i>
+                <span class="fs-4">ArXiv Papers Viewer</span>
+            </div>
+        </header>
+
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="search-container">
+                    <div class="input-group">
+                        <input type="text" id="search-input" class="form-control" placeholder="Search papers by title or abstract...">
+                        <button class="btn btn-primary" id="search-button">
+                            <i class="bi bi-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="date-container">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-calendar"></i></span>
+                        <input type="date" id="date-picker" class="form-control">
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="per-page-container">
+                    <label for="per-page-select">Show:</label>
+                    <select id="per-page-select" class="form-select">
+                        <option value="10">10 per page</option>
+                        <option value="20">20 per page</option>
+                        <option value="50">50 per page</option>
+                        <option value="100">100 per page</option>
+                        <option value="0" selected>All papers</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div id="papers-count" class="papers-count">
+            <!-- Paper count will be displayed here -->
+        </div>
+
+        <div id="papers-container" class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-3">
+            <!-- Papers will be loaded here -->
+        </div>
+
+        <div id="loading-spinner" class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+        </div>
+
+        <div class="pagination-container">
+            <nav aria-label="Page navigation">
+                <ul class="pagination" id="pagination">
+                    <!-- Pagination will be generated here -->
+                </ul>
+            </nav>
+        </div>
+    </div>
+
+    <div id="paper-details" class="paper-details">
+        <div class="paper-details-content">
+            <span class="close-button" id="close-details">&times;</span>
+            <div id="paper-details-content">
+                <!-- Paper details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global variables
+        let currentPage = 1;
+        let totalPages = 1;
+        let perPage = 0; // 0 means "All"
+        let currentSearch = '';
+        let currentDate = '';
+
+        // DOM elements
+        const papersContainer = document.getElementById('papers-container');
+        const paginationContainer = document.getElementById('pagination');
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const searchInput = document.getElementById('search-input');
+        const searchButton = document.getElementById('search-button');
+        const datePicker = document.getElementById('date-picker');
+        const paperDetails = document.getElementById('paper-details');
+        const paperDetailsContent = document.getElementById('paper-details-content');
+        const closeDetails = document.getElementById('close-details');
+        const perPageSelect = document.getElementById('per-page-select');
+        const papersCountElement = document.getElementById('papers-count');
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', () => {
+            // Set current date to today's date in YYYY-MM-DD format
+            const today = new Date();
+            currentDate = today.toISOString().split('T')[0];
+            
+            // Set the date picker to the current date
+            datePicker.value = currentDate;
+            
+            loadPapers();
+            
+            // Add click event to the paper-details overlay to close when clicking outside the content
+            paperDetails.addEventListener('click', (e) => {
+                // If the click is directly on the overlay (not on its children)
+                if (e.target === paperDetails) {
+                    paperDetails.style.display = 'none';
+                }
+            });
+        });
+
+        searchButton.addEventListener('click', () => {
+            currentSearch = searchInput.value.trim();
+            currentPage = 1;
+            loadPapers();
+        });
+
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                currentSearch = searchInput.value.trim();
+                currentPage = 1;
+                loadPapers();
+            }
+        });
+
+        datePicker.addEventListener('change', () => {
+            currentDate = datePicker.value;
+            currentPage = 1;
+            loadPapers();
+        });
+
+        closeDetails.addEventListener('click', () => {
+            paperDetails.style.display = 'none';
+        });
+
+        perPageSelect.addEventListener('change', () => {
+            const newPerPage = parseInt(perPageSelect.value);
+            perPage = newPerPage;
+            currentPage = 1;
+            loadPapers();
+        });
+
+        // Functions
+        async function loadPapers() {
+            showLoading();
+            
+            try {
+                // If perPage is 0, it means "All"
+                const effectivePerPage = perPage === 0 ? 1000 : perPage;
+                
+                // Include date parameter in the API call
+                const url = `/api/papers?page=${currentPage}&per_page=${effectivePerPage}&search=${encodeURIComponent(currentSearch)}&date=${encodeURIComponent(currentDate)}`;
+                const response = await fetch(url);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                // Update current date if API returned a different date (closest match)
+                if (data.closest_date && data.closest_date !== currentDate) {
+                    currentDate = data.closest_date;
+                    papersCountElement.innerHTML = `<div class="alert alert-info">No papers found for the requested date. Showing papers from ${formatDate(currentDate)} instead.</div>`;
+                }
+                
+                // Update pagination info
+                totalPages = data.total_pages;
+                
+                // Update papers count
+                updatePapersCount(data.total, data.papers);
+                
+                // Render papers
+                renderPapers(data.papers);
+                
+                // Render pagination (only if not showing all)
+                if (perPage !== 0) {
+                    renderPagination();
+                    document.querySelector('.pagination-container').style.display = 'flex';
+                } else {
+                    document.querySelector('.pagination-container').style.display = 'none';
+                }
+            } catch (error) {
+                console.error('Error loading papers:', error);
+                papersContainer.innerHTML = `
+                    <div class="col-12">
+                        <div class="alert alert-danger" role="alert">
+                            Error loading papers. Please try again later.
+                        </div>
+                    </div>
+                `;
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function updatePapersCount(total, papers) {
+            // Group papers by date
+            const dateGroups = {};
+            papers.forEach(paper => {
+                const date = paper.date_published || 'Unknown date';
+                if (!dateGroups[date]) {
+                    dateGroups[date] = 0;
+                }
+                dateGroups[date]++;
+            });
+            
+            // Create the count message
+            let countMessage = '';
+            
+            // Add date information
+            if (currentDate) {
+                countMessage += `<strong>Date:</strong> ${formatDate(currentDate)} | `;
+            }
+            
+            countMessage += `<strong>${total}</strong> papers found`;
+            
+            // Add date breakdown if we have multiple dates
+            const dateEntries = Object.entries(dateGroups);
+            if (dateEntries.length > 1) {
+                countMessage += ' (';
+                countMessage += dateEntries.map(([date, count]) => 
+                    `<strong>${count}</strong> from ${formatDate(date)}`
+                ).join(', ');
+                countMessage += ')';
+            }
+            
+            papersCountElement.innerHTML = countMessage;
+        }
+        
+        function formatDate(dateString) {
+            if (!dateString || dateString === 'Unknown date') return 'Unknown date';
+            
+            try {
+                const date = new Date(dateString);
+                return date.toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'short', 
+                    day: 'numeric' 
+                });
+            } catch (e) {
+                return dateString;
+            }
+        }
+
+        function renderPapers(papers) {
+            if (papers.length === 0) {
+                papersContainer.innerHTML = `
+                    <div class="col-12">
+                        <div class="alert alert-info" role="alert">
+                            No papers found. Try a different search term.
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+            
+            papersContainer.innerHTML = '';
+            
+            papers.forEach(paper => {
+                const paperElement = document.createElement('div');
+                paperElement.className = 'col';
+                
+                // Format authors
+                let authorText = 'Unknown authors';
+                if (paper.author_list && typeof paper.author_list === 'object') {
+                    if (Array.isArray(paper.author_list)) {
+                        authorText = paper.author_list.map(author => author.name).join(', ');
+                    } else if (paper.author_list.name) {
+                        authorText = paper.author_list.name;
+                    }
+                } else if (typeof paper.author_list === 'string' && paper.author_list !== 'None') {
+                    authorText = paper.author_list;
+                }
+                
+                const abstract = paper.abstract || 'No abstract available';
+                const datePublished = paper.date_published ? formatDate(paper.date_published) : 'Unknown date';
+                
+                paperElement.innerHTML = `
+                    <div class="card paper-card">
+                        <div class="card-body">
+                            <div class="paper-date">
+                                <i class="bi bi-calendar"></i> ${datePublished}
+                            </div>
+                            <h5 class="card-title paper-title">${paper.title || 'Untitled'}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">${authorText}</h6>
+                            <p class="card-text paper-abstract" data-paper-id="${paper.id}">${abstract}</p>
+                            <span class="expand-abstract" data-paper-id="${paper.id}">Show more</span>
+                        </div>
+                        <div class="card-footer bg-transparent">
+                            <button class="btn btn-sm btn-outline-primary view-details" data-id="${paper.id}">
+                                View Details
+                            </button>
+                            ${paper.link_to_paper ? 
+                                `<a href="${paper.link_to_paper}" target="_blank" class="btn btn-sm btn-outline-secondary ms-2">
+                                    <i class="bi bi-file-earmark-pdf"></i> PDF
+                                </a>` : ''}
+                        </div>
+                    </div>
+                `;
+                
+                papersContainer.appendChild(paperElement);
+            });
+            
+            // Add event listeners to view details buttons
+            document.querySelectorAll('.view-details').forEach(button => {
+                button.addEventListener('click', () => {
+                    const paperId = button.getAttribute('data-id');
+                    viewPaperDetails(paperId);
+                });
+            });
+            
+            // Add event listeners to expand abstract buttons
+            document.querySelectorAll('.expand-abstract').forEach(button => {
+                button.addEventListener('click', () => {
+                    const paperId = button.getAttribute('data-paper-id');
+                    const abstract = document.querySelector(`.paper-abstract[data-paper-id="${paperId}"]`);
+                    
+                    if (abstract.classList.contains('expanded')) {
+                        abstract.classList.remove('expanded');
+                        button.textContent = 'Show more';
+                    } else {
+                        abstract.classList.add('expanded');
+                        button.textContent = 'Show less';
+                    }
+                });
+            });
+        }
+
+        function renderPagination() {
+            paginationContainer.innerHTML = '';
+            
+            // Previous button
+            const prevLi = document.createElement('li');
+            prevLi.className = `page-item ${currentPage === 1 ? 'disabled' : ''}`;
+            prevLi.innerHTML = `
+                <a class="page-link" href="#" aria-label="Previous">
+                    <span aria-hidden="true">&laquo;</span>
+                </a>
+            `;
+            if (currentPage > 1) {
+                prevLi.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    currentPage--;
+                    loadPapers();
+                });
+            }
+            paginationContainer.appendChild(prevLi);
+            
+            // Page numbers
+            const startPage = Math.max(1, currentPage - 2);
+            const endPage = Math.min(totalPages, startPage + 4);
+            
+            for (let i = startPage; i <= endPage; i++) {
+                const pageLi = document.createElement('li');
+                pageLi.className = `page-item ${i === currentPage ? 'active' : ''}`;
+                pageLi.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+                
+                if (i !== currentPage) {
+                    pageLi.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        currentPage = i;
+                        loadPapers();
+                    });
+                }
+                
+                paginationContainer.appendChild(pageLi);
+            }
+            
+            // Next button
+            const nextLi = document.createElement('li');
+            nextLi.className = `page-item ${currentPage === totalPages ? 'disabled' : ''}`;
+            nextLi.innerHTML = `
+                <a class="page-link" href="#" aria-label="Next">
+                    <span aria-hidden="true">&raquo;</span>
+                </a>
+            `;
+            if (currentPage < totalPages) {
+                nextLi.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    currentPage++;
+                    loadPapers();
+                });
+            }
+            paginationContainer.appendChild(nextLi);
+        }
+
+        async function viewPaperDetails(paperId) {
+            showLoading();
+            
+            try {
+                const response = await fetch(`/api/paper/${paperId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const paper = await response.json();
+                
+                // Format authors
+                let authorText = 'Unknown authors';
+                if (paper.author_list && typeof paper.author_list === 'object') {
+                    if (Array.isArray(paper.author_list)) {
+                        authorText = paper.author_list.map(author => {
+                            let authorInfo = author.name;
+                            if (author.affiliation) authorInfo += ` (${author.affiliation})`;
+                            return authorInfo;
+                        }).join(', ');
+                    } else if (paper.author_list.name) {
+                        authorText = paper.author_list.name;
+                        if (paper.author_list.affiliation) authorText += ` (${paper.author_list.affiliation})`;
+                    }
+                } else if (typeof paper.author_list === 'string' && paper.author_list !== 'None') {
+                    authorText = paper.author_list;
+                }
+                
+                const datePublished = paper.date_published ? formatDate(paper.date_published) : 'Unknown date';
+                
+                paperDetailsContent.innerHTML = `
+                    <h3>${paper.title || 'Untitled'}</h3>
+                    <p class="text-muted">${authorText}</p>
+                    
+                    <div class="mb-3">
+                        <strong>Date Published:</strong> ${datePublished}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Publication Venue:</strong> ${paper.pub_venue || 'Not specified'}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Publication Lab:</strong> ${paper.pub_lab || 'Not specified'}
+                    </div>
+                    
+                    <div class="mb-3">
+                        <strong>Subjects:</strong> ${paper.subjects || 'Not specified'}
+                    </div>
+                    
+                    <div class="mb-4">
+                        <h5>Abstract</h5>
+                        <p>${paper.abstract || 'No abstract available'}</p>
+                    </div>
+                    
+                    <div class="d-flex gap-2">
+                        ${paper.link_to_paper ? 
+                            `<a href="${paper.link_to_paper}" target="_blank" class="btn btn-primary">
+                                <i class="bi bi-file-earmark-pdf"></i> View Paper
+                            </a>` : ''}
+                        
+                        ${paper.link_to_project_page ? 
+                            `<a href="${paper.link_to_project_page}" target="_blank" class="btn btn-outline-primary">
+                                <i class="bi bi-globe"></i> Project Page
+                            </a>` : ''}
+                    </div>
+                `;
+                
+                paperDetails.style.display = 'block';
+            } catch (error) {
+                console.error('Error loading paper details:', error);
+                alert('Error loading paper details. Please try again later.');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function showLoading() {
+            loadingSpinner.style.display = 'block';
+        }
+
+        function hideLoading() {
+            loadingSpinner.style.display = 'none';
+        }
+    </script>
+</body>
+</html> 
